@@ -1,37 +1,35 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import pickle
+import joblib
 import os
 
-st.set_page_config(page_title="EcoType: Forest Cover Predictor", page_icon="🌿", layout="wide")
+st.set_page_config(page_title="EcoType: Forest Cover Predictor", page_icon="", layout="wide")
 
 # Cached loading routine to prevent reloading the pipeline on every widget interaction
 @st.cache_resource
 def load_ml_pipeline():
-    model_path = 'models/forest_cover_pipeline.pkl'
-    if not os.path.exists(model_path):
-        # Fallback search path check directly in workspace root
-        model_path = 'forest_cover_pipeline.pkl'
+    # Look for the compressed joblib file directly in the repository root directory
+    model_path = 'forest_cover_pipeline.joblib'
         
-    with open(model_path, 'rb') as f:
-        return pickle.load(f)
+    if not os.path.exists(model_path):
+        st.error(f"⚠️ Project artifact file '{model_path}' could not be discovered in the root directory.")
+        st.info("💡 Please ensure you have uploaded your compressed 'forest_cover_pipeline.joblib' file directly to the main folder of your GitHub repository.")
+        st.stop()
+        
+    return joblib.load(model_path)
 
-# Main layout logic validation
+# Main layout presentation and title
 st.title("🌿 EcoType: Forest Cover Classification Tool")
 st.markdown("Provide geographical, cartographic, and environmental inputs to evaluate the dominant forest cover type class designation.")
 st.markdown("---")
 
-try:
-    pipeline = load_ml_pipeline()
-    model = pipeline['model']
-    scaler = pipeline['scaler']
-    encoders = pipeline['encoders']
-    feature_names = pipeline['feature_names']
-except FileNotFoundError:
-    st.error("⚠️ Pipeline model file artifact ('forest_cover_pipeline.pkl') could not be discovered inside the project.")
-    st.info("💡 Please download the exported pipeline file from your Google Colab run and place it inside the 'models/' folder of this repository.")
-    st.stop()
+# Load the compiled machine learning artifacts
+pipeline = load_ml_pipeline()
+model = pipeline['model']
+scaler = pipeline['scaler']
+encoders = pipeline['encoders']
+feature_names = pipeline['feature_names']
 
 # Build 3 layout presentation panels
 col1, col2, col3 = st.columns(3)
