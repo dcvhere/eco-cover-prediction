@@ -3,28 +3,42 @@ import pandas as pd
 import numpy as np
 import joblib
 import os
+import urllib.request
 
-st.set_page_config(page_title="EcoType: Forest Cover Predictor", page_icon="", layout="wide")
+st.set_page_config(page_title="EcoType: Forest Cover Predictor", page_icon=":)", layout="wide")
 
-# Cached loading routine to prevent reloading the pipeline on every widget interaction
+# Cached loading routine to stream the model directly from Google Drive if missing
 @st.cache_resource
 def load_ml_pipeline():
-    # Look for the compressed joblib file directly in the repository root directory
-    model_path = 'forest_cover_pipeline.joblib'
-        
-    if not os.path.exists(model_path):
-        st.error(f"⚠️ Project artifact file '{model_path}' could not be discovered in the root directory.")
-        st.info("💡 Please ensure you have uploaded your compressed 'forest_cover_pipeline.joblib' file directly to the main folder of your GitHub repository.")
-        st.stop()
-        
-    return joblib.load(model_path)
+    local_path = 'forest_cover_pipeline.joblib'
+    
+    # 🚨 REPLACE THIS STRING WITH YOUR ACTUAL GOOGLE DRIVE FILE ID FROM STEP 2
+    GOOGLE_DRIVE_FILE_ID = "1R3fw6pNzYZsyiOG2armiweF2hbDX7tke"
+    
+    # If the file does not exist locally on the Streamlit deployment container, download it
+    if not os.path.exists(local_path):
+        with st.spinner("🔄 Downloading machine learning model artifacts from cloud storage... This may take a moment."):
+            try:
+                download_url = f'https://drive.google.com/uc?export=download&id={GOOGLE_DRIVE_FILE_ID}'
+                # Set a user-agent header to avoid any request blocking
+                opener = urllib.request.build_opener()
+                opener.addheaders = [('User-agent', 'Mozilla/5.0')]
+                urllib.request.install_opener(opener)
+                
+                urllib.request.urlretrieve(download_url, local_path)
+            except Exception as e:
+                st.error("⚠️ Failed to stream the model from cloud storage.")
+                st.exception(e)
+                st.stop()
+                
+    return joblib.load(local_path)
 
 # Main layout presentation and title
 st.title("🌿 EcoType: Forest Cover Classification Tool")
 st.markdown("Provide geographical, cartographic, and environmental inputs to evaluate the dominant forest cover type class designation.")
 st.markdown("---")
 
-# Load the compiled machine learning artifacts
+# Load the compiled machine learning artifacts seamlessly
 pipeline = load_ml_pipeline()
 model = pipeline['model']
 scaler = pipeline['scaler']
@@ -51,7 +65,7 @@ with col3:
     st.subheader("☀️ Hillshade Illumination")
     hillshade_9am = st.slider("9:00 AM Illumination Index (0-255)", min_value=0, max_value=255, value=210)
     hillshade_noon = st.slider("12:00 PM Noon Illumination Index (0-255)", min_value=0, max_value=255, value=215)
-    hillshade_3pm = st.slider("3:00 PM Illumination Index (0-255)", min_value=0, max_value=255, value=140)
+    hillshade_3pm = st.slider("3:00 PM Illumination Index (0-255)", min_value=0, max_value=140, value=140)
 
 # Sidebar for high cardinality index categories
 st.sidebar.header("🏞️ Terrain Profiles")
